@@ -6,7 +6,9 @@ import time
 import telebot
 from telebot import types
 
-API_TOKEN = '<TOKEN>'
+# API_TOKEN = '<TOKEN>'
+API_TOKEN = '724197308:AAEeHcxWTH-CGUxokIHZBYm-_5P2rrIHKpA'
+
 
 bot = telebot.TeleBot(API_TOKEN)
 telebot.logger.setLevel(logging.DEBUG)
