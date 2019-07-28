@@ -129,14 +129,14 @@ def rows(message):
 
 
 def parameters_tire(message):
-    filters(message.text)
-    if message.text == "Корзина":
-        if user != 0:
-            getCart()
-    elif message.text == '/start'
-        send_welcome(message)
-    else:
-        rows(message)
+	filters(message.text)
+	if message.text == "Корзина":
+		if user != 0:
+			getCart()
+	elif message.text == '/start':
+	    send_welcome(message)
+	else:
+	    rows(message)
 
 
 def get_fullname(message):
