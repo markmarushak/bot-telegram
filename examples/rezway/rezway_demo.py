@@ -5,21 +5,24 @@
 # It echoes any incoming text messages.
 
 import telebot
-# from telebot import types
-# from telebot import util
-# from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-# import requests
-# import re
+from telebot import types
+from telebot import util
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import requests
+import re
 from _functions import *
 from keyboard import *
 import time
 
+# основной бот
+# API_TOKEN = '724197308:AAEeHcxWTH-CGUxokIHZBYm-_5P2rrIHKpA'
+# для тестов чтоб не мешать главному
+API_TOKEN = '633808414:AAGgQ3vSO6-7vdRj4YFnLTGuh1P302bmCuM'
 
-API_TOKEN = '724197308:AAEeHcxWTH-CGUxokIHZBYm-_5P2rrIHKpA'
 bot = telebot.TeleBot(API_TOKEN)
 
 chat_bot = 'callback_query'
-host = "https://rezway.com.ua"
+# host = "https://rezway.com.ua"
 # api = host + '/index.php?route=api/product/'
 # method = 'get'
 user = fullname = phone = currentTotal = currentProduct = search = category = ""
@@ -48,46 +51,54 @@ def send_spam(message):
     chat_bot = message.chat.id
     bot.send_message(message.chat.id, 'Начинаеться спам новстей, Мухахах')
     try:
-        data_news = api('', 'news_last')# берем последнюю новость 
+        data_news = api('', 'news_spam')# берем последнюю новость 
         users = api('', 'get_accounts')# берем список пользователей 
         # по очередно отправляем новость 
         for i in users.get('data'):
-            article(data_news, i.get('chat_id'))
+            bot.send_message(i.get('chat_id'), data_news.get('data'))
 
     except Exception as e:
         bot.send_message(chat_bot, e)
 
+# надо убрать весь лишний код из echo_message 
+# за счет того что создать отдельно функции проверки для каждой кнопки
+def main_menu(message):
+    getCart(message)
+    getNews(message)
+    getSetting(message)
+
+def back_to_home(message):
+    pass
 
 def news_week(message):
     try:
-        result = api('', 'news_week', user.get('chat_id'))
-        article(result, chat_bot, 'week')
+        result = api('', 'news_week')
+        for article in result.get('data'):
+            bot.send_message(message.chat.id, article)
     except Exception as e:
-        bot.send_message(chat_bot, e)
+        bot.send_message(message.chat.id, 'news a week not loaded, sorry')
 
 def news_last(message):
     try:
-        result = api('', 'news_last', user.get('chat_id'))
-        article(result, chat_bot, 'last')
+        result = api('', 'news_last')
+        for article in result.get('data'):
+            bot.send_message(message.chat.id, article)
     except Exception as e:
-        bot.send_message(chat_bot, e)
+        bot.send_message(message.chat.id, 'news a week not loaded, sorry')
 
 def change_fio(message):
     try:
-        query = '&chat_id='+str(chat_bot)+'&fullname='+message.text
-        response = api(query, 'change_name')
-        bot.send_message(chat_bot, response.get('data'))
+        query = '&chat_id='+str(chat_bot)+'&fio='+message.text
+        api(query, 'change_fio')
     except Exception as e:
         bot.send_message(chat_bot, 'не удалось изменить ФИО')
 
 def change_phone(message):
     try:
         query = '&chat_id='+str(chat_bot)+'&phone='+message.text
-        response = api(query, 'change_phone')
-        bot.send_message(chat_bot, response.get('data'))
+        api(query, 'change_phone')
     except Exception as e:
         bot.send_message(chat_bot, 'не удалось изменить Номер телефона')
-
 
 def filters(t):
     global search
@@ -128,24 +139,53 @@ def fast_buy(message):
         msg = bot.send_message(chat_bot, 'Введите ваше имя')
         bot.register_next_step_handler(msg, get_fullname)
 
+def getWays(message):
+    global category
+    if message.text in "☀ Летняя ♻ Всесезонная ❄ Зимняя":
+        category = message.text
+        text = "Вы выбрали " + category + " \r\n Введите ваш типоразмер по данному примеру 190/50 R13 \r\n где: 190 - ширина, 50 - профиль, R13 - Диаметр"
+        msg = bot.send_message(message.chat.id, text)
+        bot.register_next_step_handler(msg, parameters_tire)
 
+def getSetting(message):
+    global operation
+    if message.text in "Настройки":
+        try:
+            if user != 0:
+                bot.send_message(message.chat.id, 'Ваши персональные настройки \r ФИО: '+user.get('fullname')+'\r Номер телефона: '+ user.get('phone'), reply_markup=setting())
+            else:
+                operation = 'Register'
+                get_fullname()
 
-def getCart():
+        except Exception as e:
+            bot.send_message(chat_bot, 'error get setting')
+
+def getNews(message):
+    if message.text in "Новости 📰":
+        try:
+            # see next to CallBack_functions
+            bot.send_message(message.chat.id, 'Какие новости вы хотите увидеть?', reply_markup=news_btn())
+
+        except Exception as e:
+            bot.send_message(chat_bot, 'error get news_btn')
+
+def getCart(message):
     global repository
-    response = api('&chat_id=' + user.get('chat_id'), 'get_cart')
-    status = response.get('status')
-    if status == 200:
-        repository.update({
-            'name': 'cart',
-            'data': response.get('data')
-        })
-        photo(response, user.get('chat_id'), 'cart')
-        bot.send_message(chat_bot, 'Корзина товаров', reply_markup=cart())
-    else:
-        emptyCart()
-
-def emptyCart():
-    bot.send_message(chat_bot, 'Выберите товар.. корзина пуста')
+    if message.text in 'Корзина 🛒':
+        if user != 0:
+            response = api('&chat_id=' + user.get('chat_id'), 'get_cart')
+            status = response.get('status')
+            if status == 200:
+                repository.update({
+                    'name': 'cart',
+                    'data': response.get('data')
+                })
+                photo(response, user.get('chat_id'), 'cart')
+                bot.send_message(chat_bot, 'Корзина товаров', reply_markup=cart())
+            else:
+                bot.send_message(chat_bot, 'Выберите товар.. корзина пуста')
+        else:
+            bot.send_message(chat_bot, 'Выберите товар.. корзина пуста')
 
 def checkAuth():
     global user
@@ -190,35 +230,26 @@ def rows(message):
 def parameters_tire(message):
     global operation
     filters(message.text)
-    if message.text == "Корзина 🛒":
-        try:
-            if user != 0:
-                getCart()
-            else:
-                bot.send_message(chat_bot, 'Вы еще не делали покуп')
-        except Exception as e:
-            bot.send_message(chat_bot, 'error get cart')
-    elif message.text == '/start':
-	    send_welcome(message)
-    elif message.text in "Новости 📰":
-        try:
-            # see next to CallBack_functions
-            bot.send_message(message.chat.id, 'Какие новости вы хотите увидеть?', reply_markup=news_btn())
+    main_menu(message)
+    # if message.text == '/start':
+	   #  send_welcome(message)
+    # elif message.text in "Новости 📰":
+    #     try:
+    #         # see next to CallBack_functions
+    #         bot.send_message(message.chat.id, 'Какие новости вы хотите увидеть?', reply_markup=news_btn())
 
-        except Exception as e:
-            bot.send_message(chat_bot, 'error get news_btn')
-    elif message.text in "Настройки ⚙️":
-        try:
-            if user != 0:
-                bot.send_message(message.chat.id, 'Ваши персональные настройки \r ФИО: '+user.get('fullname')+'\r Номер телефона: '+ user.get('phone'), reply_markup=setting())
-            else:
-                operation = 'Register'
-                get_fullname()
-
-        except Exception as e:
-            bot.send_message(chat_bot, 'error get setting')
-    else:
-	    rows(message)
+    #     except Exception as e:
+    #         bot.send_message(chat_bot, 'error get news_btn')
+    # elif message.text in "Настройки":
+    #     try:
+    #         if user != 0:
+    #             bot.send_message(message.chat.id, 'Ваши персональные настройки \r ФИО: '+user.get('fullname')+'\r Номер телефона: '+ user.get('phone'), reply_markup=setting())
+    #         else:
+    #             operation = 'Register'
+    #             get_fullname()
+    #     except Exception as e:
+    #         bot.send_message(chat_bot, 'error get setting')
+    rows(message)
 
 
 def get_fullname(message):
@@ -277,10 +308,10 @@ def callback_query(message):
             bot.register_next_step_handler(msg, fast_buy)
 
         elif message.data in "change_fio":
-            msg = bot.send_message(chat_bot, "Введите новое ФИО")
+            msg = bot.send_message(message.chat.id, "Введите новое ФИО")
             bot.register_next_step_handler(msg, change_fio)
         elif message.data in "change_phone":
-            msg = bot.send_message(chat_bot, "Введите новый Номер телефона")
+            msg = bot.send_message(message.chat.id, "Введите новый Номер телефона")
             bot.register_next_step_handler(msg, change_phone)
         elif message.data in "news_week":
             news_week(message)
@@ -306,7 +337,7 @@ def callback_query(message):
                 if message.data[:1] == 'd':
 
                     if del_cart(id, user.get('chat_id')).get('status') == 200:
-                        bot.send_message(chat_bot, 'Товар '+ id+' был удален')
+
                         getCart()
 
                     else:
@@ -319,8 +350,7 @@ def callback_query(message):
                     bot.register_next_step_handler(msg, change_total, id=id)
 
     except Exception as e:
-        # bot.send_message(chat_bot, 'Ошибка в Callback функции', reply_markup=seasson())
-        bot.send_message(chat_bot, e, reply_markup=seasson())
+        bot.send_message(chat_bot, 'Ошибка в Callback функции', reply_markup=seasson())
 
 
 # any text out puted user
@@ -332,9 +362,10 @@ def echo_message(message):
 
         chat_bot = message.chat.id
         checkAuth()
+        main_menu(message)
         if message.text in "Вернуться на главную":
             send_welcome(message)
-        elif message.text == "Отправить заказ на оформление":
+        elif message.text in "Отправить заказ на оформление":
             try:
                 bot.send_message(chat_bot, 'Ожидайте подтверждения заказа')
                 response = api("&chat_id="+str(chat_bot),"order_buy")
@@ -342,42 +373,39 @@ def echo_message(message):
             except Exception as e:
                 bot.send_message(chat_bot, 'отправка заказа на обработку оборвалась')
         # elif message.text == "☀ Летняя" or message.text == "♻ Всесезонная" or message.text == "❄ Зимняя":
-        elif message.text in "☀ Летняя ♻ Всесезонная ❄ Зимняя":
+        # elif message.text in "☀ Летняя ♻ Всесезонная ❄ Зимняя":
 
-            category = message.text
-            text = "Вы выбрали " + category + " \r\n Введите ваш типоразмер по данному примеру 190/50 R13 \r\n где: 190 - ширина, 50 - профиль, R13 - Диаметр"
-            msg = bot.send_message(message.chat.id, text)
-            bot.register_next_step_handler(msg, parameters_tire)
+        #     category = message.text
+        #     text = "Вы выбрали " + category + " \r\n Введите ваш типоразмер по данному примеру 190/50 R13 \r\n где: 190 - ширина, 50 - профиль, R13 - Диаметр"
+        #     msg = bot.send_message(message.chat.id, text)
+        #     bot.register_next_step_handler(msg, parameters_tire)
 
-        elif message.text in "Корзина 🛒":
-            try:
-                if user != 0:
-                    getCart()
-                else:
-                    bot.send_message(chat_bot, 'Вы еще не делали покуп')
-            except Exception as e:
-                bot.send_message(chat_bot, 'error get cart')
+        # elif message.text in "Корзина 🛒":
+        #     try:
+        #         if user != 0:
+        #             getCart()
+        #         else:
+        #             bot.send_message(chat_bot, 'Вы еще не делали покуп')
+        #     except Exception as e:
+        #         bot.send_message(chat_bot, 'error get cart')
 
-        elif message.text in "Новости 📰":
-            try:
-                # see next to CallBack_functions
-                bot.send_message(message.chat.id, 'Какие новости вы хотите увидеть?', reply_markup=news_btn())
+        # elif message.text in "Новости 📰":
+        #     try:
+        #         # see next to CallBack_functions
+        #         bot.send_message(message.chat.id, 'Какие новости вы хотите увидеть?', reply_markup=news_btn())
 
-            except Exception as e:
-                bot.send_message(chat_bot, 'error get news_btn')
-        elif message.text in "Настройки ⚙️":
-            try:
-                if user != 0:
-                    bot.send_message(message.chat.id, 'Ваши персональные настройки \r\n ФИО: '+user.get('fullname')+'\r\n Номер телефона: '+ user.get('phone'), reply_markup=setting())
-                else:
-                    operation = 'Register'
-                    msg = bot.send_message(chat_bot,
-                                           "Введи контакты ФИО и номер телефона - в последующие разы вам не прийдется этот шаг проходить \r\n\r\nВведите ФИО ",
-                                           reply_markup=seasson())
-                    bot.register_next_step_handler(msg, get_fullname)
+        #     except Exception as e:
+        #         bot.send_message(chat_bot, 'error get news_btn')
+        # elif message.text in "Настройки":
+        #     try:
+        #         if user != 0:
+        #             bot.send_message(message.chat.id, 'Ваши персональные настройки \r ФИО: '+user.get('fullname')+'\r Номер телефона: '+ user.get('phone'), reply_markup=setting())
+        #         else:
+        #             operation = 'Register'
+        #             get_fullname()
 
-            except Exception as e:
-                bot.send_message(chat_bot, 'error get setting')
+        #     except Exception as e:
+        #         bot.send_message(chat_bot, 'error get setting')
 
         elif bool(re.match(r'^\d{1}|[1-5]', message.text)):
 
@@ -391,11 +419,11 @@ def echo_message(message):
 
                     if response.get('status') == 403:
                         # bot.send_message(chat_bot, response.get('data'), reply_markup=seasson())
-                        bot.send_message(message.chat.id, 'Такой товар уже есть в корзине', reply_markup=seasson())
+                        bot.send_message(message.chat.id, 'не добавлено в корзину', reply_markup=seasson())
                     else:
                         name = user.get('fullname')
                         msg = bot.send_message(chat_bot,
-                                               'Товар добавлен в корзину. \r\n' + name + "\r Вы можете перейти в корзину или продолжить поиск",
+                                               'Товар добавлен в корзину ' + name + "\r Вы можете перейти в корзину или продолжить поиск",
                                                reply_markup=seasson())
                 except Exception as e:
                     msg = bot.send_message(chat_bot,

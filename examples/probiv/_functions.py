@@ -2,25 +2,30 @@ import re
 import requests
 import telebot
 from keyboard import  *
-host = "https://rezway.com.ua"
+# host = "https://in-touch.ooo/api"
+host = "http://probiv.loc/api/"
 # host = "http://rezway.loc"
 # main link api
-api_url = host + '/index.php?route=api/product/'
 # method GET/POST/PUT/DELETE
 # method = 'get'
 
-API_TOKEN = '724197308:AAEeHcxWTH-CGUxokIHZBYm-_5P2rrIHKpA'
+API_TOKEN = '798419976:AAEGP058AxX6pXBzHs88P7ETopD0dvqPXJ0'
 
 bot = telebot.TeleBot(API_TOKEN)
 
 def api(query, method, chat_bot = 'null', req = 'get'):
     try:
         if req == 'get':
-            request = requests.get(api_url + method + query)
-            # bot.send_message(chat_bot, api_url + method + query)
+            request = requests.get(host + method + query)
+            if chat_bot != 'null':
+                bot.send_message(chat_bot, host + method + query)
             response = request.json()
             return response
-        
+        elif req == 'post':
+            request = requests.post(host+method, query)
+            bot.send_message(chat_bot, api_url + method + query)
+            response = request.json()
+            return response
     except Exception as e:
         bot.send_message(chat_bot, e)
 

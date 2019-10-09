@@ -12,9 +12,10 @@ def seasson():
 	    InlineKeyboardButton("☀ Летняя"),
 	    InlineKeyboardButton("♻ Всесезонная"),
 	    InlineKeyboardButton("❄ Зимняя"),
-	    InlineKeyboardButton("Корзина")
+	    InlineKeyboardButton("Корзина 🛒"),
+	    InlineKeyboardButton("Новости 📰"),
+	    InlineKeyboardButton("Настройки ⚙️")
     )
-	markup.row_width = 1
 	return markup
 
 def buy(id):
@@ -58,5 +59,44 @@ def cart_product(id):
 	markup.add(
 	    InlineKeyboardButton("Удлить товар", callback_data="d"+id),
 	    InlineKeyboardButton("Изменить кол-во", callback_data="c"+id)
+    )
+	return markup
+
+def setting():
+	markup = InlineKeyboardMarkup()
+	markup.row_width = 1
+	markup.add(
+	    InlineKeyboardButton("Изменить ФИО", callback_data="change_fio"),
+	    InlineKeyboardButton("Изменнить Номер", callback_data="change_phone")
+    )
+	return markup
+
+def seetting_button(name, id):
+	markup = InlineKeyboardMarkup()
+	markup.row_width = 2
+	if name in 'ФИО':
+		btn = InlineKeyboardButton("Изменнить ФИО", callback_data="fio"+id)
+	else:
+		btn = InlineKeyboardButton("Изменнить Номер", callback_data="tel"+id)
+
+	markup.add(
+	    btn
+    )
+	return markup
+
+def news_btn():
+	markup = InlineKeyboardMarkup()
+	markup.row_width = 1
+	markup.add(
+	    InlineKeyboardButton("Новости за неделю", callback_data="news_week"),
+	    InlineKeyboardButton("Последние новости", callback_data="news_last")
+    )
+	return markup
+
+def article_link(link):
+	markup = InlineKeyboardMarkup()
+	markup.row_width = 1
+	markup.add(
+	    InlineKeyboardButton("Открыть статью", url=link),
     )
 	return markup
